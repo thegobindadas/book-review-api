@@ -1,0 +1,37 @@
+{
+  "name": "bookreview",
+  "version": "1.0.0",
+  "description": "Book Review Api",
+  "keywords": [
+    "review-system",
+    "book-review-api",
+    "express",
+    "mongodb",
+    "nodejs",
+    "jwt-authentication",
+    "restful-api",
+    "mongoose",
+    "book-reviews"
+  ],
+  "license": "ISC",
+  "author": "Gobinda Das",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.1",
+    "mongoose-aggregate-paginate-v2": "^1.1.4"
+  }
+}
