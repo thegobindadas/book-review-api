@@ -94,7 +94,7 @@ export const getAllBooks = asyncHandler(async (req, res) => {
         )
 })
 
-//
+
 export const getBookDetails = asyncHandler(async (req, res) => {
 
     const bookId = req.params.id;
@@ -107,44 +107,88 @@ export const getBookDetails = asyncHandler(async (req, res) => {
     }
 
 
-    const [bookData] = await Book.aggregate([
+    const bookWithReviews = await Book.aggregate([
         {
             $match: { _id: new mongoose.Types.ObjectId(bookId) }
         },
         {
             $lookup: {
-            from: "reviews",
-            localField: "_id",
-            foreignField: "book",
-            as: "allReviews"
+                from: "reviews",
+                localField: "_id",
+                foreignField: "book",
+                as: "reviews"
             }
         },
         {
             $addFields: {
-            averageRating: { $round: [{ $avg: "$allReviews.rating" }, 0] },
-            totalReviews: { $size: "$allReviews" }
+                averageRating: { $avg: "$reviews.rating" },
+                totalReviews: { $size: "$reviews" }
             }
         },
         {
             $project: {
-            allReviews: 0 // exclude full review list here to load only paginated reviews later
+                reviews: {
+                    $slice: ["$reviews", skip, limit]
+                },
+                title: 1,
+                author: 1,
+                genre: 1,
+                description: 1,
+                publishedDate: 1,
+                createdBy: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                averageRating: { $round: ["$averageRating", 1] },
+                totalReviews: 1
+            }
+        },
+        { $unwind: "$reviews" },
+        {
+            $lookup: {
+                from: "users",
+                localField: "reviews.user",
+                foreignField: "_id",
+                as: "userDetails"
+            }
+        },
+        {
+            $unwind: "$userDetails"
+        },
+        {
+            $group: {
+                _id: "$_id",
+                title: { $first: "$title" },
+                author: { $first: "$author" },
+                genre: { $first: "$genre" },
+                description: { $first: "$description" },
+                publishedDate: { $first: "$publishedDate" },
+                createdBy: { $first: "$createdBy" },
+                createdAt: { $first: "$createdAt" },
+                updatedAt: { $first: "$updatedAt" },
+                averageRating: { $first: "$averageRating" },
+                totalReviews: { $first: "$totalReviews" },
+                reviews: {
+                    $push: {
+                        _id: "$reviews._id",
+                        userId: "$userDetails._id",
+                        username: "$userDetails.username",
+                        email: "$userDetails.email",
+                        rating: "$reviews.rating",
+                        comment: "$reviews.comment",
+                        createdAt: "$reviews.createdAt",
+                        updatedAt: "$reviews.updatedAt"
+                    }
+                }
             }
         }
     ]);
 
-    if (!bookData) {
+    if (!bookWithReviews[0]) {
         throw new ApiError(404, "Book not found.")
     }
 
+    const totalPages = Math.ceil((bookWithReviews[0]?.totalReviews || 0) / limit);
 
-    // Now paginate and populate reviews separately
-    const reviews = await Review.find({ book: bookId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("user", "_id username email");
-
-    const totalPages = Math.ceil(bookData.totalReviews / limit);
 
 
     return res
@@ -153,10 +197,9 @@ export const getBookDetails = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200, 
                 {
-                    ...bookData,
+                    ...bookWithReviews[0],
                     currentPage: page,
-                    totalPages,
-                    reviews
+                    totalPages
                 },
                 "Book details fetched successfully."
             )
