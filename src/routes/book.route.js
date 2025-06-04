@@ -5,6 +5,7 @@ import {
     getAllBooks,
     getBookDetails,
     addReviewToBook,
+    searchBooks,
 } from "../controllers/book.controller.js";
 
 
@@ -21,6 +22,9 @@ router.route("/").post(createNewBook);
 
 //GET /books?page=2&limit=5&author=Rowling&genre=Fantasy
 router.route("/").get(getAllBooks);
+
+//GET /search?query=harry
+router.route("/search").get(searchBooks);
 
 router.route("/:id").get(getBookDetails);
 

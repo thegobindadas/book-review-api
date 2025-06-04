@@ -97,7 +97,7 @@ export const getAllBooks = asyncHandler(async (req, res) => {
 
 export const getBookDetails = asyncHandler(async (req, res) => {
 
-    const bookId = req.params.id;
+    const { id: bookId} = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
@@ -259,6 +259,41 @@ export const addReviewToBook = asyncHandler(async (req, res) => {
                 200, 
                 newReview, 
                 "Review added successfully."
+            )
+        )
+})
+
+
+export const searchBooks = asyncHandler(async (req, res) => {
+
+    const { query } = req.query;
+
+    if (!query || query.trim() === "") {
+        throw new ApiError(400, "Search query is required.")
+    }
+
+
+    const regex = new RegExp(query, 'i'); // case-insensitive regex
+
+    const books = await Book.find({
+        $or: [
+            { title: { $regex: regex } },
+            { author: { $regex: regex } }
+        ]
+    }).select("-__v"); // optional: exclude __v
+
+
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    books,
+                    results: books.length,
+                }, 
+                "Books found successfully."
             )
         )
 })
