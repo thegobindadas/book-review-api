@@ -97,45 +97,70 @@ export const getAllBooks = asyncHandler(async (req, res) => {
 //
 export const getBookDetails = asyncHandler(async (req, res) => {
 
-    const { id } = req.params;
+    const bookId = req.params.id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
  
-    if (!isValidObjectId(id)) {
+    if (!isValidObjectId(bookId)) {
         throw new ApiError(400, "Invalid book ID.")
     }
 
 
-    const book = await Book.findById(id).lean();
+    const [bookData] = await Book.aggregate([
+        {
+            $match: { _id: new mongoose.Types.ObjectId(bookId) }
+        },
+        {
+            $lookup: {
+            from: "reviews",
+            localField: "_id",
+            foreignField: "book",
+            as: "allReviews"
+            }
+        },
+        {
+            $addFields: {
+            averageRating: { $round: [{ $avg: "$allReviews.rating" }, 0] },
+            totalReviews: { $size: "$allReviews" }
+            }
+        },
+        {
+            $project: {
+            allReviews: 0 // exclude full review list here to load only paginated reviews later
+            }
+        }
+    ]);
 
-    if (!book) {
+    if (!bookData) {
         throw new ApiError(404, "Book not found.")
     }
 
 
-    // Calculate average rating
-  const ratingStats = await Review.aggregate([
-    { $match: { book: book._id } },
-    {
-      $group: {
-        _id: "$book",
-        averageRating: { $avg: "$rating" },
-        totalReviews: { $sum: 1 }
-      }
-    }
-  ]);
+    // Now paginate and populate reviews separately
+    const reviews = await Review.find({ book: bookId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("user", "_id username email");
 
-  const averageRating = ratingStats[0]?.averageRating || 0;
-  const totalReviews = ratingStats[0]?.totalReviews || 0;
+    const totalPages = Math.ceil(bookData.totalReviews / limit);
 
-  // Get paginated reviews
-  const reviews = await Review.find({ book: book._id })
-    .populate("user", "username email")
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
-    .lean();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    ...bookData,
+                    currentPage: page,
+                    totalPages,
+                    reviews
+                },
+                "Book details fetched successfully."
+            )
+        )
 })
 
 

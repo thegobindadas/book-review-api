@@ -10,7 +10,9 @@ import {
 
 
 const router = Router()
+
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
 
 
 
@@ -20,10 +22,11 @@ router.route("/").post(createNewBook);
 //GET /books?page=2&limit=5&author=Rowling&genre=Fantasy
 router.route("/").get(getAllBooks);
 
-//
 router.route("/:id").get(getBookDetails);
 
 router.route("/:id/reviews").post(addReviewToBook);
+
+
 
 
 
