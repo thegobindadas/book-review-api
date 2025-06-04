@@ -32,4 +32,4 @@ reviewSchema.index({ book: 1, user: 1 }, { unique: true });
 
 
 
-export const Review = mongoose.model("Review", reviewSchema)
+export const Review = mongoose.model("Review", reviewSchema);
